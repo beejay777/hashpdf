@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashPDF — Verify Document Integrity</title>
+    <meta name="description"
+        content="Seal and verify the integrity of your documents using SHA-256 hashing. No uploads, no storage — everything runs in your browser.">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <canvas id="particle-canvas"></canvas>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <a href="./" class="header__logo">
+                <img src="favicon.svg" alt="" class="header__icon">
+                <h1 class="header__title">HashPDF</h1>
+            </a>
+            <p class="header__subtitle">
+                Seal your documents with a cryptographic fingerprint. Share them anywhere. Let receivers verify nothing
+                was tampered with.
+            </p>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs" role="tablist">
+            <button class="tab-btn active" role="tab" aria-selected="true" data-tab="seal" id="tab-seal">
+                <span class="tab-btn__icon">🛡️</span>
+                Seal
+            </button>
+            <button class="tab-btn" role="tab" aria-selected="false" data-tab="verify" id="tab-verify">
+                <span class="tab-btn__icon">🔍</span>
+                Verify
+            </button>
+        </div>
+
+        <!-- ==================== SEAL PANEL ==================== -->
+        <div class="panel active" id="panel-seal" role="tabpanel" aria-labelledby="tab-seal">
+            <div class="dropzone" id="seal-dropzone">
+                <input type="file" class="dropzone__input" id="seal-file-input" aria-label="Choose a file to seal">
+                <span class="dropzone__icon">📄</span>
+                <p class="dropzone__text">Drop your file here, or click to browse</p>
+                <p class="dropzone__hint">PDF, DOCX, images, or any file type — up to any size</p>
+            </div>
+
+            <!-- File info -->
+            <div class="file-info" id="seal-file-info">
+                <span class="file-info__icon">📎</span>
+                <div class="file-info__details">
+                    <div class="file-info__name" id="seal-file-name"></div>
+                    <div class="file-info__size" id="seal-file-size"></div>
+                </div>
+                <button class="file-info__remove" id="seal-file-remove" title="Remove file">✕</button>
+            </div>
+
+            <!-- Progress -->
+            <div class="progress" id="seal-progress">
+                <div class="progress__bar-bg">
+                    <div class="progress__bar-fill" id="seal-progress-fill"></div>
+                </div>
+                <p class="progress__text" id="seal-progress-text">Computing hash...</p>
+            </div>
+
+            <!-- Hash result -->
+            <div class="hash-result" id="seal-hash-result">
+                <p class="hash-result__label">SHA-256 Fingerprint</p>
+                <div class="hash-result__value">
+                    <code class="hash-result__hash" id="seal-hash-value"></code>
+                    <button class="hash-result__copy" id="seal-hash-copy">Copy</button>
+                </div>
+            </div>
+
+            <!-- Share section -->
+            <div class="share-section" id="seal-share-section">
+                <p class="share-section__label">Share with Receiver</p>
+
+                <!-- Native share (mobile) -->
+                <div class="share-buttons" id="seal-native-share" style="display:none;">
+                    <button class="share-btn share-btn--native" id="seal-share-native-btn">
+                        <span class="share-btn__icon">📤</span>
+                        Share File + Verification Link
+                    </button>
+                </div>
+
+                <!-- Fallback share buttons (desktop) -->
+                <div class="share-buttons" id="seal-fallback-share">
+                    <a class="share-btn share-btn--whatsapp" id="seal-share-whatsapp" href="#" target="_blank"
+                        rel="noopener">
+                        <span class="share-btn__icon">💬</span>
+                        WhatsApp
+                    </a>
+                    <a class="share-btn share-btn--telegram" id="seal-share-telegram" href="#" target="_blank"
+                        rel="noopener">
+                        <span class="share-btn__icon">✈️</span>
+                        Telegram
+                    </a>
+                    <a class="share-btn share-btn--email" id="seal-share-email" href="#" target="_blank" rel="noopener">
+                        <span class="share-btn__icon">📧</span>
+                        Email
+                    </a>
+                    <button class="share-btn share-btn--copy" id="seal-share-copy-link">
+                        <span class="share-btn__icon">🔗</span>
+                        Copy Link
+                    </button>
+                </div>
+
+                <!-- Desktop reminder -->
+                <div class="share-note" id="seal-share-note" style="display:none;">
+                    <span class="share-note__icon">💡</span>
+                    Remember to also attach the original file when you send the message!
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VERIFY PANEL ==================== -->
+        <div class="panel" id="panel-verify" role="tabpanel" aria-labelledby="tab-verify">
+            <!-- Hash input -->
+            <div class="verify-hash-input">
+                <label for="verify-expected-hash">Expected Hash (from sender)</label>
+                <input type="text" id="verify-expected-hash"
+                    placeholder="Paste the SHA-256 hash here, or use a verification link">
+                <p class="verify-hash-source" id="verify-hash-source">✅ Hash loaded from verification link</p>
+            </div>
+
+            <!-- Dropzone -->
+            <div class="dropzone" id="verify-dropzone">
+                <input type="file" class="dropzone__input" id="verify-file-input" aria-label="Choose a file to verify">
+                <span class="dropzone__icon">🔍</span>
+                <p class="dropzone__text">Drop the received file here, or click to browse</p>
+                <p class="dropzone__hint">We'll compare its hash against the expected one</p>
+            </div>
+
+            <!-- File info -->
+            <div class="file-info" id="verify-file-info">
+                <span class="file-info__icon">📎</span>
+                <div class="file-info__details">
+                    <div class="file-info__name" id="verify-file-name"></div>
+                    <div class="file-info__size" id="verify-file-size"></div>
+                </div>
+                <button class="file-info__remove" id="verify-file-remove" title="Remove file">✕</button>
+            </div>
+
+            <!-- Progress -->
+            <div class="progress" id="verify-progress">
+                <div class="progress__bar-bg">
+                    <div class="progress__bar-fill" id="verify-progress-fill"></div>
+                </div>
+                <p class="progress__text" id="verify-progress-text">Computing hash...</p>
+            </div>
+
+            <!-- Verification result -->
+            <div class="verify-result" id="verify-result"></div>
+        </div>
+
+        <!-- ==================== HOW IT WORKS ==================== -->
+        <section class="how-it-works">
+            <h2 class="how-it-works__title">How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step__number">1</div>
+                    <div class="step__content">
+                        <div class="step__title">Seal Your Document</div>
+                        <p class="step__desc">Drop your file into the Seal tab. We compute a unique SHA-256 fingerprint
+                            — a string that changes if even one byte is altered.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step__number">2</div>
+                    <div class="step__content">
+                        <div class="step__title">Share Both</div>
+                        <p class="step__desc">Send your file and the verification link to the receiver using WhatsApp,
+                            email, or any method you prefer.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step__number">3</div>
+                    <div class="step__content">
+                        <div class="step__title">Receiver Verifies</div>
+                        <p class="step__desc">The receiver opens the link, drops in the file they received, and
+                            instantly sees if it matches — or if something was changed.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step__number">4</div>
+                    <div class="step__content">
+                        <div class="step__title">100% Private</div>
+                        <p class="step__desc">No files are uploaded anywhere. All hashing runs in your browser. Not even
+                            we can see your documents.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Security badge -->
+        <div class="security-badge">
+            <span class="security-badge__icon">🔐</span>
+            <p class="security-badge__text">
+                Powered by <span class="security-badge__highlight">SHA-256</span> via the
+                <span class="security-badge__highlight">Web Crypto API</span>.
+                Your files never leave your device — all processing happens locally in your browser.
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p class="footer__text">
+                HashPDF is open source and free to use.
+                Built for anyone who needs to verify document integrity.
+            </p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
